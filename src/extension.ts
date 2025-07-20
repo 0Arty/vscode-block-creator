@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Component Generator is now active!')
+    console.log('Component Generator is now active!');
     const disposable = vscode.commands.registerCommand('component-generator.create', async () => {
         const type = await vscode.window.showQuickPick(['feature', 'layout', 'ui'], {
             placeHolder: 'Select component type'
@@ -23,8 +23,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
         const root = workspaceFolders[0].uri.fsPath;
 
-        //work with scss
-        const indexPath = path.join(root, 'src', 'styles', type, `index.ts`);
+        // Work with scss
+        const styleIndexPath = path.join(root, 'src', 'styles', type, `index.ts`);
         const importName = name.toLowerCase();
         const className = `${type}Styles`;
         const stylePath = path.join(root, 'src', 'styles', type, `${name}.module.scss`);
@@ -32,12 +32,12 @@ export function activate(context: vscode.ExtensionContext) {
         fs.mkdirSync(path.dirname(stylePath), { recursive: true });
         fs.writeFileSync(stylePath, `.${importName} {\n  // styles\n}\n`);
 
-        // Якщо index.ts не існує — створити
-        if (!fs.existsSync(indexPath)) {
-            fs.writeFileSync(indexPath, `import ${importName} from './${importName}.module.scss';\n\nexport const ${className} = {\n  ${importName}: ${importName}.${importName}\n};\n`);
+        // Якщо index.ts для стилів не існує — створити
+        if (!fs.existsSync(styleIndexPath)) {
+            fs.writeFileSync(styleIndexPath, `import ${importName} from './${importName}.module.scss';\n\nexport const ${className} = {\n  ${importName}: ${importName}.${importName}\n};\n`);
         } else {
             // Якщо існує — зчитати, оновити
-            let content = fs.readFileSync(indexPath, 'utf-8');
+            let content = fs.readFileSync(styleIndexPath, 'utf-8');
 
             // Якщо імпорту ще нема
             if (!content.includes(`'./${importName}.module.scss'`)) {
@@ -51,19 +51,34 @@ export function activate(context: vscode.ExtensionContext) {
             if (match) {
                 let existing = match[1].trim();
                 if (!existing.includes(`${importName}:`)) {
-                    existing += `,\n  ${importName}: ${importName}.${importName}`;
+                    existing += existing ? `,\n  ${importName}: ${importName}.${importName}` : `${importName}: ${importName}.${importName}`;
                 }
                 const updatedExport = `export const ${className} = {\n  ${existing.trim()}\n};`;
                 content = content.replace(exportRegex, updatedExport);
             }
-            fs.writeFileSync(indexPath, content);
+            fs.writeFileSync(styleIndexPath, content);
         }
 
-        // work with tsx
+        // Work with tsx
         const componentPath = path.join(root, 'src', 'components', type, `${name}.tsx`);
         fs.mkdirSync(path.dirname(componentPath), { recursive: true });
-        fs.writeFileSync(componentPath, `import {${className}} from '@/styles/${type}';\n\nexport const ${capitalize(name)} = () => {\n  return <div className={${className}.${name}}>${name}</div>;\n};\n`);
+        fs.writeFileSync(componentPath, `import {${className}} from '@/styles/${type}';\n\nexport const ${capitalize(name)} = () => {\n  return <div className={${className}.${importName}}>${name}</div>;\n};\n`);
 
+        // Work with component index.ts
+        const componentIndexPath = path.join(root, 'src', 'components', type, `index.ts`);
+        const exportLine = `export * from './${name}';\n`;
+
+        // Якщо index.ts для компонентів не існує — створити
+        if (!fs.existsSync(componentIndexPath)) {
+            fs.writeFileSync(componentIndexPath, exportLine);
+        } else {
+            // Якщо існує — додати новий експорт, якщо його ще немає
+            let componentIndexContent = fs.readFileSync(componentIndexPath, 'utf-8');
+            if (!componentIndexContent.includes(`'./${name}'`)) {
+                componentIndexContent += exportLine;
+                fs.writeFileSync(componentIndexPath, componentIndexContent);
+            }
+        }
 
         vscode.window.showInformationMessage(`Component "${name}" created in "${type}"`);
     });

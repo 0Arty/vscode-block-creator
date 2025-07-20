@@ -2,7 +2,7 @@
     "name": "vscode-component-generator",
     "displayName": "Component Generator",
     "description": "Generate UI/Layout/Feature components quickly",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "engines": {
         "vscode": "^1.85.0"
     },
