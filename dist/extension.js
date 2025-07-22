@@ -100,12 +100,12 @@ function activate(context) {
             fs.writeFileSync(styleIndexPath, content);
         }
         // Work with tsx
-        const componentPath = path.join(root, 'src', 'components', type, `${name}.tsx`);
+        const componentPath = path.join(root, 'src', 'components', type, `${capitalize(name)}.tsx`);
         fs.mkdirSync(path.dirname(componentPath), { recursive: true });
         fs.writeFileSync(componentPath, `import {${className}} from '@/styles/${type}';\n\nexport const ${capitalize(name)} = () => {\n  return <div className={${className}.${importName}}>${name}</div>;\n};\n`);
         // Work with component index.ts
         const componentIndexPath = path.join(root, 'src', 'components', type, `index.ts`);
-        const exportLine = `export * from './${name}';\n`;
+        const exportLine = `export * from './${capitalize(name)}';\n`;
         // Якщо index.ts для компонентів не існує — створити
         if (!fs.existsSync(componentIndexPath)) {
             fs.writeFileSync(componentIndexPath, exportLine);
