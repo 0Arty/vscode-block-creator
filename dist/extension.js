@@ -69,7 +69,7 @@ function activate(context) {
         const root = workspaceFolders[0].uri.fsPath;
         // Work with scss
         const styleIndexPath = path.join(root, 'src', 'styles', type, `index.ts`);
-        const importName = name.toLowerCase();
+        const importName = name;
         const className = `${type}Styles`;
         const stylePath = path.join(root, 'src', 'styles', type, `${name}.module.scss`);
         fs.mkdirSync(path.dirname(stylePath), { recursive: true });

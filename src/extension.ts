@@ -25,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         // Work with scss
         const styleIndexPath = path.join(root, 'src', 'styles', type, `index.ts`);
-        const importName = name.toLowerCase();
+        const importName = name;
         const className = `${type}Styles`;
         const stylePath = path.join(root, 'src', 'styles', type, `${name}.module.scss`);
 
