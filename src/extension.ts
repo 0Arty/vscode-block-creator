@@ -35,13 +35,12 @@ export function activate(context: vscode.ExtensionContext) {
         fs.mkdirSync(path.dirname(componentPath), { recursive: true });
 
         fs.writeFileSync(componentPath,
-`
-import styles from '@/styles/${type}/${name}.module.scss';
+`import styles from '@/styles/${type}/${name}.module.scss';
 
 interface I${componentName} {
 }
 
-const ${componentName}: I${componentName} = ({ }) => {
+const ${componentName} = ({ }: I${componentName}) => {
     return (
         <div className={styles.root}>
 
