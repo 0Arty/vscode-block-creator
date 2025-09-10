@@ -6,9 +6,23 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Component Generator is now active!');
 
     const disposable = vscode.commands.registerCommand('component-generator.create', async () => {
-        const type = await vscode.window.showQuickPick(['feature', 'layout', 'ui', 'modals'], {
-            placeHolder: 'Select component type'
-        });
+        // === 1. Перевіряємо чи вже є режим ===
+        let mode = context.globalState.get<string>('componentGeneratorMode');
+        if (!mode) {
+            mode = await vscode.window.showQuickPick(['nextjs', 'gulp'], {
+                placeHolder: 'Select project type'
+            });
+            if (!mode) return;
+            await context.globalState.update('componentGeneratorMode', mode);
+        }
+
+        // === 2. Вибір типу компонента ===
+        const type = await vscode.window.showQuickPick(
+            mode === 'nextjs'
+                ? ['feature', 'layout', 'ui', 'modals']
+                : ['components', 'ui', 'templates'],
+            { placeHolder: 'Select component type' }
+        );
         if (!type) return;
 
         const name = await vscode.window.showInputBox({
@@ -24,18 +38,35 @@ export function activate(context: vscode.ExtensionContext) {
         }
         const root = workspaceFolders[0].uri.fsPath;
 
-        // === SCSS ===
-        const stylePath = path.join(root, 'src', 'styles', type, `${name}.module.scss`);
-        fs.mkdirSync(path.dirname(stylePath), { recursive: true });
-        fs.writeFileSync(stylePath, `.root {\n  // styles\n}\n`);
+        // === 3. Логіка під конкретний режим ===
+        if (mode === 'nextjs') {
+            createNextComponent(root, type, name);
+        } else if (mode === 'gulp') {
+            createGulpComponent(root, type, name);
+        }
+    });
 
-        // === Component TSX ===
-        const componentName = capitalize(name);
-        const componentPath = path.join(root, 'src', 'components', type, `${componentName}.tsx`);
-        fs.mkdirSync(path.dirname(componentPath), { recursive: true });
+    context.subscriptions.push(disposable);
+}
 
-        fs.writeFileSync(componentPath,
-`import styles from '@/styles/${type}/${name}.module.scss';
+export function deactivate() { }
+
+function capitalize(str: string) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// === Next.js шаблон ===
+function createNextComponent(root: string, type: string, name: string) {
+    const stylePath = path.join(root, 'src', 'styles', type, `${name}.module.scss`);
+    fs.mkdirSync(path.dirname(stylePath), { recursive: true });
+    fs.writeFileSync(stylePath, `.root {\n  // styles\n}\n`);
+
+    const componentName = capitalize(name);
+    const componentPath = path.join(root, 'src', 'components', type, `${componentName}.tsx`);
+    fs.mkdirSync(path.dirname(componentPath), { recursive: true });
+
+    fs.writeFileSync(componentPath,
+        `import styles from '@/styles/${type}/${name}.module.scss';
 
 interface I${componentName} {
 }
@@ -49,29 +80,53 @@ const ${componentName} = ({ }: I${componentName}) => {
 };
 
 export default ${componentName};
-`)
+`);
 
-        // === Component Index.ts ===
-        const componentIndexPath = path.join(root, 'src', 'components', type, `index.ts`);
-        const exportLine = `export * from './${componentName}';\n`;
+    const componentIndexPath = path.join(root, 'src', 'components', type, `index.ts`);
+    const exportLine = `export * from './${componentName}';\n`;
 
-        if (!fs.existsSync(componentIndexPath)) {
-            fs.writeFileSync(componentIndexPath, exportLine);
-        } else {
-            const componentIndexContent = fs.readFileSync(componentIndexPath, 'utf-8');
-            if (!componentIndexContent.includes(`'./${componentName}'`)) {
-                fs.appendFileSync(componentIndexPath, exportLine);
-            }
+    if (!fs.existsSync(componentIndexPath)) {
+        fs.writeFileSync(componentIndexPath, exportLine);
+    } else {
+        const componentIndexContent = fs.readFileSync(componentIndexPath, 'utf-8');
+        if (!componentIndexContent.includes(`'./${componentName}'`)) {
+            fs.appendFileSync(componentIndexPath, exportLine);
         }
+    }
 
-        vscode.window.showInformationMessage(`Component "${componentName}" created in "${type}"`);
-    });
-
-    context.subscriptions.push(disposable);
+    vscode.window.showInformationMessage(`Next.js component "${componentName}" created in "${type}"`);
 }
 
-export function deactivate() { }
+// === Gulp шаблон ===
+function createGulpComponent(root: string, type: string, name: string) {
+    // HTML
+    const htmlPath = path.join(root, 'src', 'html', type, `${name}.html`);
+    fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
+    fs.writeFileSync(htmlPath, `<section class="${name}"></section>\n`);
 
-function capitalize(str: string) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    // SCSS
+    const scssPath = path.join(root, 'src', 'scss', type, `_${name}.scss`);
+    fs.mkdirSync(path.dirname(scssPath), { recursive: true });
+    fs.writeFileSync(scssPath,
+        `@use '../helpers' as *;
+
+.${name} {
+    
+}
+`);
+
+    // update _index.scss поруч
+    const indexPath = path.join(root, 'src', 'scss', type, `_index.scss`);
+    const forwardLine = `@forward '${name}';\n`;
+
+    if (!fs.existsSync(indexPath)) {
+        fs.writeFileSync(indexPath, forwardLine);
+    } else {
+        const indexContent = fs.readFileSync(indexPath, 'utf-8');
+        if (!indexContent.includes(`'${name}'`)) {
+            fs.appendFileSync(indexPath, forwardLine);
+        }
+    }
+
+    vscode.window.showInformationMessage(`Gulp component "${name}" created in "${type}"`);
 }
